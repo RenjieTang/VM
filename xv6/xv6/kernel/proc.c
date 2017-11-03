@@ -75,6 +75,7 @@ found:
 void
 userinit(void)
 {
+  cprintf("initializing\n");
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
@@ -84,21 +85,23 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;
+  p->sz = 3*PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
   p->tf->es = p->tf->ds;
   p->tf->ss = p->tf->ds;
   p->tf->eflags = FL_IF;
-  p->tf->esp = PGSIZE;
-  p->tf->eip = 0;  // beginning of initcode.S
+  p->tf->esp = 0x3000;
+  p->curr_stack = 0x2000;
+  p->tf->eip = 0x2000;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
   release(&ptable.lock);
+  cprintf("initialized\n");
 }
 
 // Grow current process's memory by n bytes.
@@ -109,6 +112,10 @@ growproc(int n)
   uint sz;
   
   sz = proc->sz;
+  if(proc->curr_stack-sz-n <= 5*PGSIZE) {
+    cprintf("grow proc failed!!!!!!!!!\n"); 
+    return -1;
+  }
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -127,6 +134,7 @@ growproc(int n)
 int
 fork(void)
 {
+  cprintf("forking\n");
   int i, pid;
   struct proc *np;
 
@@ -135,7 +143,7 @@ fork(void)
     return -1;
 
   // Copy process state from p.
-  if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+  if((np->pgdir = copyuvm(proc->pgdir, proc->sz, proc->curr_stack)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
@@ -143,6 +151,7 @@ fork(void)
   }
   np->sz = proc->sz;
   np->parent = proc;
+  np->curr_stack = proc->curr_stack;
   *np->tf = *proc->tf;
 
   // Clear %eax so that fork returns 0 in the child.
@@ -443,4 +452,15 @@ procdump(void)
   }
 }
 
-
+int
+growstack(void)
+{
+  uint sz = 0;
+  if(proc->curr_stack-(uint)PGROUNDUP(proc->sz) > 6*PGSIZE) {
+    sz = allocuvm(proc->pgdir,proc->curr_stack-PGSIZE, proc->curr_stack);
+  }
+  if(sz) {
+   proc->curr_stack = proc->curr_stack-PGSIZE;
+  }
+  return sz;
+}

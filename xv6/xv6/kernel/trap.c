@@ -75,6 +75,18 @@ trap(struct trapframe *tf)
             cpu->id, tf->cs, tf->eip);
     lapiceoi();
     break;
+  
+  case T_PGFLT:
+    if((int)*PGROUNDDOWN(rcr2()) < proc->curr_stack-PGSIZE) {
+      proc->killed = 1;
+      break;
+    }
+    if(!growstack()) {
+      proc->killed = 1;
+    }
+    cprintf("stack growed\n");
+    break;
+        
    
   default:
     if(proc == 0 || (tf->cs&3) == 0){
