@@ -84,7 +84,6 @@ trap(struct trapframe *tf)
     if(!growstack()) {
       proc->killed = 1;
     }
-    cprintf("stack growed\n");
     break;
         
    

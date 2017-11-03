@@ -75,7 +75,6 @@ found:
 void
 userinit(void)
 {
-  cprintf("initializing\n");
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
@@ -101,7 +100,6 @@ userinit(void)
 
   p->state = RUNNABLE;
   release(&ptable.lock);
-  cprintf("initialized\n");
 }
 
 // Grow current process's memory by n bytes.
@@ -113,7 +111,6 @@ growproc(int n)
   
   sz = proc->sz;
   if(proc->curr_stack-sz-n <= 5*PGSIZE) {
-    cprintf("grow proc failed!!!!!!!!!\n"); 
     return -1;
   }
   if(n > 0){
@@ -134,7 +131,6 @@ growproc(int n)
 int
 fork(void)
 {
-  cprintf("forking\n");
   int i, pid;
   struct proc *np;
 

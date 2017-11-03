@@ -49,7 +49,6 @@ exec(char *path, char **argv)
   ip = 0;
 
   // Allocate a one-page stack at the next page boundary
-  //sz = PGROUNDUP(sz);
   uint stack_top;
   if((stack_top = allocuvm(pgdir, USERTOP-PGSIZE, USERTOP)) == 0)
     goto bad;
